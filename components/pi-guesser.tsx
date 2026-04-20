@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PI_DIGITS } from "@/lib/pi-digits";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
 const CHUNK_START_OPTIONS = [
@@ -217,7 +218,12 @@ export function PiGuesser() {
   const formattedGroups = formatDigits(revealedDigits, offset, includeThree);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-4">
+      {/* Theme toggle in top right */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       <div className="text-center">
         <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
           π Digit Guesser
