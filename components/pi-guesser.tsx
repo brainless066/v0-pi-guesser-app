@@ -2,10 +2,17 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PI_DIGITS } from "@/lib/pi-digits";
 
 const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
+const CHUNK_START_OPTIONS = [
+  { label: "3.", value: "3.", prefix: "3." },
+  { label: "3.14", value: "3.14", prefix: "3.14" },
+] as const;
 const STORAGE_KEY = "pi-guesser-chunk-size";
+const STORAGE_KEY_CHUNK_START = "pi-guesser-chunk-start";
+const STORAGE_KEY_SPEED = "pi-guesser-sim-speed";
 
 const SPEED_OPTIONS = [
   { label: "Slow", ms: 100 },
@@ -22,19 +29,31 @@ export function PiGuesser() {
   const [gameOver, setGameOver] = useState(false);
   const [shake, setShake] = useState(false);
   const [chunkSize, setChunkSize] = useState(5);
+  const [chunkStart, setChunkStart] = useState<"3." | "3.14" | "none">("3.");
   const [simulating, setSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState(20);
   const [wrongCount, setWrongCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load chunk size from localStorage on mount
+  // Load chunk size and chunk start from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = parseInt(saved);
-      if (CHUNK_OPTIONS.includes(parsed as typeof CHUNK_OPTIONS[number])) {
+    const savedSize = localStorage.getItem(STORAGE_KEY);
+    if (savedSize) {
+      const parsed = parseInt(savedSize);
+      if (parsed >= 1 && parsed <= 100) {
         setChunkSize(parsed);
+      }
+    }
+    const savedStart = localStorage.getItem(STORAGE_KEY_CHUNK_START);
+    if (savedStart && ["3.", "3.14", "none"].includes(savedStart)) {
+      setChunkStart(savedStart as "3." | "3.14" | "none");
+    }
+    const savedSpeed = localStorage.getItem(STORAGE_KEY_SPEED);
+    if (savedSpeed) {
+      const parsed = parseInt(savedSpeed);
+      if (SPEED_OPTIONS.some((o) => o.ms === parsed)) {
+        setSimSpeed(parsed);
       }
     }
   }, []);
@@ -45,14 +64,57 @@ export function PiGuesser() {
     localStorage.setItem(STORAGE_KEY, size.toString());
   };
 
+  // Save chunk start to localStorage when it changes (toggle behavior)
+  const handleChunkStartToggle = (start: "3." | "3.14") => {
+    const newValue = chunkStart === start ? "none" : start;
+    setChunkStart(newValue);
+    localStorage.setItem(STORAGE_KEY_CHUNK_START, newValue);
+  };
+
+  // Save sim speed to localStorage when it changes
+  const handleSimSpeedChange = (speed: number) => {
+    setSimSpeed(speed);
+    localStorage.setItem(STORAGE_KEY_SPEED, speed.toString());
+  };
+
+  // Get the prefix and offset based on chunk start option
+  const getChunkStartConfig = () => {
+    // "none" = chunking includes "3" as first digit (e.g., 3.14 159 265... where "314" is first chunk)
+    // "3." = chunking starts after "3." (e.g., 3.141 592 653...)
+    // "3.14" = chunking starts after "3.14" (e.g., 3.14 159 265...)
+    switch (chunkStart) {
+      case "3.14":
+        return { prefix: "3.14", offset: 2, includeThree: false };
+      case "3.":
+        return { prefix: "3.", offset: 0, includeThree: false };
+      case "none":
+      default:
+        return { prefix: "", offset: 0, includeThree: true };
+    }
+  };
+
+  const { prefix, offset, includeThree } = getChunkStartConfig();
+
   // Get the digits we've revealed so far
   const revealedDigits = PI_DIGITS.slice(0, position);
 
-  // Format digits into groups for readability
-  const formatDigits = useCallback((digits: string) => {
+  // Format digits into groups for readability, considering the chunk start offset
+  const formatDigits = useCallback((digits: string, startOffset: number, prependThree: boolean) => {
+    // startOffset: number of digits already shown in the prefix
+    // prependThree: whether to include "3" as part of first chunk
+    let digitsToFormat = digits;
+    if (startOffset > 0) {
+      // Skip the first 'offset' digits as they're in the prefix
+      digitsToFormat = digits.slice(startOffset);
+    }
+    if (prependThree) {
+      // Prepend "3" to make it part of the first chunk
+      digitsToFormat = "3" + digitsToFormat;
+    }
+    
     const groups: string[] = [];
-    for (let i = 0; i < digits.length; i += chunkSize) {
-      groups.push(digits.slice(i, i + chunkSize));
+    for (let i = 0; i < digitsToFormat.length; i += chunkSize) {
+      groups.push(digitsToFormat.slice(i, i + chunkSize));
     }
     return groups;
   }, [chunkSize]);
@@ -152,7 +214,7 @@ export function PiGuesser() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleGuess, handleReset, handleContinue, gameOver]);
 
-  const formattedGroups = formatDigits(revealedDigits);
+  const formattedGroups = formatDigits(revealedDigits, offset, includeThree);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-4">
@@ -169,16 +231,9 @@ export function PiGuesser() {
       <div className="flex gap-6 text-center">
         <div>
           <div className="text-2xl font-bold text-foreground sm:text-3xl">
-            {position + 1}
+            {position}
           </div>
-          <div className="text-sm text-muted-foreground">Digits Correct</div>
-        </div>
-        <div className="h-12 w-px bg-border" />
-        <div>
-          <div className="text-2xl font-bold text-foreground sm:text-3xl">
-            {position - 1}
-          </div>
-          <div className="text-sm text-muted-foreground">After Decimal</div>
+          <div className="text-sm text-muted-foreground">Digits After Decimal</div>
         </div>
         <div className="h-12 w-px bg-border" />
         <div>
@@ -189,21 +244,52 @@ export function PiGuesser() {
         </div>
       </div>
 
-      {/* Chunk size selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Group by:</span>
-        <div className="flex gap-1">
-          {CHUNK_OPTIONS.map((size) => (
-            <Button
-              key={size}
-              variant={chunkSize === size ? "default" : "outline"}
-              size="sm"
-              className="h-8 w-10 text-sm"
-              onClick={() => handleChunkSizeChange(size)}
-            >
-              {size}
-            </Button>
-          ))}
+      {/* Chunk settings */}
+      <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Group by:</span>
+          <div className="flex gap-1">
+            {CHUNK_OPTIONS.map((size) => (
+              <Button
+                key={size}
+                variant={chunkSize === size ? "default" : "outline"}
+                size="sm"
+                className="h-8 w-10 text-sm"
+                onClick={() => handleChunkSizeChange(size)}
+              >
+                {size}
+              </Button>
+            ))}
+          </div>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={chunkSize}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (val >= 1 && val <= 100) {
+                handleChunkSizeChange(val);
+              }
+            }}
+            className="h-8 w-16 rounded-md border-dashed border-2 bg-muted/50 text-center text-sm font-mono focus:border-solid focus:border-primary"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Start after:</span>
+          <div className="flex gap-1">
+            {CHUNK_START_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                variant={chunkStart === option.value ? "default" : "outline"}
+                size="sm"
+                className="h-8 px-3 text-sm font-mono"
+                onClick={() => handleChunkStartToggle(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -215,11 +301,18 @@ export function PiGuesser() {
           ref={scrollRef}
           className="max-h-64 overflow-y-auto font-mono text-lg sm:text-xl"
         >
-          <span className="text-foreground">3.</span>
+          {prefix && <span className="text-foreground">{prefix}</span>}
           <span className="text-foreground">
             {formattedGroups.map((group, i) => (
               <span key={i}>
-                {group}
+                {/* For first group when includeThree, insert decimal after "3" */}
+                {i === 0 && includeThree && group.length > 0 ? (
+                  <>
+                    {group[0]}.{group.slice(1)}
+                  </>
+                ) : (
+                  group
+                )}
                 {i < formattedGroups.length - 1 && (
                   <span className="text-muted-foreground/30">{" "}</span>
                 )}
@@ -289,7 +382,7 @@ export function PiGuesser() {
                 variant={simSpeed === option.ms ? "default" : "outline"}
                 size="sm"
                 className="h-8 px-3 text-sm"
-                onClick={() => setSimSpeed(option.ms)}
+                onClick={() => handleSimSpeedChange(option.ms)}
               >
                 {option.label}
               </Button>
@@ -322,6 +415,16 @@ export function PiGuesser() {
       <p className="text-sm text-muted-foreground">
         Tip: Use keyboard 0-9 to guess, Enter to continue, Escape to reset
       </p>
+
+      {/* Source link */}
+      <a
+        href="https://github.com/eneko/Pi/blob/master/one-million.txt"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+      >
+        Pi digits source
+      </a>
     </div>
   );
 }
