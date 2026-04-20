@@ -13,6 +13,7 @@ const CHUNK_START_OPTIONS = [
 ] as const;
 const STORAGE_KEY = "pi-guesser-chunk-size";
 const STORAGE_KEY_CHUNK_START = "pi-guesser-chunk-start";
+const STORAGE_KEY_SPEED = "pi-guesser-sim-speed";
 
 const SPEED_OPTIONS = [
   { label: "Slow", ms: 100 },
@@ -49,6 +50,13 @@ export function PiGuesser() {
     if (savedStart && ["3.", "3.14", "3"].includes(savedStart)) {
       setChunkStart(savedStart as "3." | "3.14" | "3");
     }
+    const savedSpeed = localStorage.getItem(STORAGE_KEY_SPEED);
+    if (savedSpeed) {
+      const parsed = parseInt(savedSpeed);
+      if (SPEED_OPTIONS.some((o) => o.ms === parsed)) {
+        setSimSpeed(parsed);
+      }
+    }
   }, []);
 
   // Save chunk size to localStorage when it changes
@@ -61,6 +69,12 @@ export function PiGuesser() {
   const handleChunkStartChange = (start: "3." | "3.14" | "3") => {
     setChunkStart(start);
     localStorage.setItem(STORAGE_KEY_CHUNK_START, start);
+  };
+
+  // Save sim speed to localStorage when it changes
+  const handleSimSpeedChange = (speed: number) => {
+    setSimSpeed(speed);
+    localStorage.setItem(STORAGE_KEY_SPEED, speed.toString());
   };
 
   // Get the prefix and offset based on chunk start option
@@ -368,7 +382,7 @@ export function PiGuesser() {
                 variant={simSpeed === option.ms ? "default" : "outline"}
                 size="sm"
                 className="h-8 px-3 text-sm"
-                onClick={() => setSimSpeed(option.ms)}
+                onClick={() => handleSimSpeedChange(option.ms)}
               >
                 {option.label}
               </Button>
