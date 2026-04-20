@@ -79,33 +79,37 @@ export function PiGuesser() {
 
   // Get the prefix and offset based on chunk start option
   const getChunkStartConfig = () => {
-    // offset determines where chunking alignment starts
-    // "none" = chunking starts from digit 0 (e.g., 3. 141 592 653...)
-    // "3." = chunking starts fresh after showing "14" separately (legacy, but same as none now)
-    // "3.14" = "14" is part of prefix, chunking starts from digit 2 (e.g., 3.14 159 265...)
+    // "none" = chunking includes "3" as first digit (e.g., 3.14 159 265... where "314" is first chunk)
+    // "3." = chunking starts after "3." (e.g., 3.141 592 653...)
+    // "3.14" = chunking starts after "3.14" (e.g., 3.14 159 265...)
     switch (chunkStart) {
       case "3.14":
-        return { prefix: "3.14", offset: 2 };
+        return { prefix: "3.14", offset: 2, includeThree: false };
       case "3.":
-        return { prefix: "3.", offset: 0 };
+        return { prefix: "3.", offset: 0, includeThree: false };
       case "none":
       default:
-        return { prefix: "3.", offset: 0 };
+        return { prefix: "", offset: 0, includeThree: true };
     }
   };
 
-  const { prefix, offset } = getChunkStartConfig();
+  const { prefix, offset, includeThree } = getChunkStartConfig();
 
   // Get the digits we've revealed so far
   const revealedDigits = PI_DIGITS.slice(0, position);
 
   // Format digits into groups for readability, considering the chunk start offset
-  const formatDigits = useCallback((digits: string, startOffset: number) => {
+  const formatDigits = useCallback((digits: string, startOffset: number, prependThree: boolean) => {
     // startOffset: number of digits already shown in the prefix
+    // prependThree: whether to include "3" as part of first chunk
     let digitsToFormat = digits;
     if (startOffset > 0) {
       // Skip the first 'offset' digits as they're in the prefix
       digitsToFormat = digits.slice(startOffset);
+    }
+    if (prependThree) {
+      // Prepend "3" to make it part of the first chunk
+      digitsToFormat = "3" + digitsToFormat;
     }
     
     const groups: string[] = [];
@@ -210,7 +214,7 @@ export function PiGuesser() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleGuess, handleReset, handleContinue, gameOver]);
 
-  const formattedGroups = formatDigits(revealedDigits, offset);
+  const formattedGroups = formatDigits(revealedDigits, offset, includeThree);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-4">
@@ -297,11 +301,18 @@ export function PiGuesser() {
           ref={scrollRef}
           className="max-h-64 overflow-y-auto font-mono text-lg sm:text-xl"
         >
-          <span className="text-foreground">{prefix}</span>
+          {prefix && <span className="text-foreground">{prefix}</span>}
           <span className="text-foreground">
             {formattedGroups.map((group, i) => (
               <span key={i}>
-                {group}
+                {/* For first group when includeThree, insert decimal after "3" */}
+                {i === 0 && includeThree && group.length > 0 ? (
+                  <>
+                    {group[0]}.{group.slice(1)}
+                  </>
+                ) : (
+                  group
+                )}
                 {i < formattedGroups.length - 1 && (
                   <span className="text-muted-foreground/30">{" "}</span>
                 )}
