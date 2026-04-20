@@ -7,6 +7,13 @@ import { PI_DIGITS } from "@/lib/pi-digits";
 const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
 const STORAGE_KEY = "pi-guesser-chunk-size";
 
+const SPEED_OPTIONS = [
+  { label: "Slow", ms: 100 },
+  { label: "Fast", ms: 20 },
+  { label: "Turbo", ms: 5 },
+  { label: "Max", ms: 1 },
+] as const;
+
 export function PiGuesser() {
   // Position in PI_DIGITS (0 = first digit after decimal, which is '1')
   // We start showing "3.14" so position starts at 2 (after '1' and '4')
@@ -15,7 +22,10 @@ export function PiGuesser() {
   const [gameOver, setGameOver] = useState(false);
   const [shake, setShake] = useState(false);
   const [chunkSize, setChunkSize] = useState(5);
+  const [simulating, setSimulating] = useState(false);
+  const [simSpeed, setSimSpeed] = useState(20);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load chunk size from localStorage on mount
   useEffect(() => {
@@ -77,7 +87,44 @@ export function PiGuesser() {
     setWrongGuess(null);
     setGameOver(false);
     setShake(false);
+    stopSimulation();
   }, []);
+
+  const stopSimulation = useCallback(() => {
+    if (simulationRef.current) {
+      clearInterval(simulationRef.current);
+      simulationRef.current = null;
+    }
+    setSimulating(false);
+  }, []);
+
+  const startSimulation = useCallback(() => {
+    if (gameOver) {
+      handleReset();
+    }
+    setSimulating(true);
+  }, [gameOver, handleReset]);
+
+  // Simulation effect
+  useEffect(() => {
+    if (simulating && !gameOver) {
+      simulationRef.current = setInterval(() => {
+        setPosition((p) => {
+          if (p >= PI_DIGITS.length - 1) {
+            stopSimulation();
+            return p;
+          }
+          return p + 1;
+        });
+      }, simSpeed);
+    }
+
+    return () => {
+      if (simulationRef.current) {
+        clearInterval(simulationRef.current);
+      }
+    };
+  }, [simulating, gameOver, simSpeed, stopSimulation]);
 
   // Keyboard support
   useEffect(() => {
@@ -206,6 +253,46 @@ export function PiGuesser() {
           Try Again
         </Button>
       )}
+
+      {/* Simulation controls */}
+      <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Speed:</span>
+          <div className="flex gap-1">
+            {SPEED_OPTIONS.map((option) => (
+              <Button
+                key={option.label}
+                variant={simSpeed === option.ms ? "default" : "outline"}
+                size="sm"
+                className="h-8 px-3 text-sm"
+                onClick={() => setSimSpeed(option.ms)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {!simulating ? (
+            <Button
+              onClick={startSimulation}
+              variant="default"
+              size="lg"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Start Simulation
+            </Button>
+          ) : (
+            <Button
+              onClick={stopSimulation}
+              variant="destructive"
+              size="lg"
+            >
+              Stop Simulation
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Keyboard hint */}
       <p className="text-sm text-muted-foreground">
