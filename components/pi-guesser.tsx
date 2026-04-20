@@ -224,16 +224,9 @@ export function PiGuesser() {
       <div className="flex gap-6 text-center">
         <div>
           <div className="text-2xl font-bold text-foreground sm:text-3xl">
-            {position + 1}
+            {position}
           </div>
-          <div className="text-sm text-muted-foreground">Digits Correct</div>
-        </div>
-        <div className="h-12 w-px bg-border" />
-        <div>
-          <div className="text-2xl font-bold text-foreground sm:text-3xl">
-            {position - 1}
-          </div>
-          <div className="text-sm text-muted-foreground">After Decimal</div>
+          <div className="text-sm text-muted-foreground">Digits After Decimal</div>
         </div>
         <div className="h-12 w-px bg-border" />
         <div>
