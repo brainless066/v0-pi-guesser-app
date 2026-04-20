@@ -24,6 +24,7 @@ export function PiGuesser() {
   const [chunkSize, setChunkSize] = useState(5);
   const [simulating, setSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState(20);
+  const [wrongCount, setWrongCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -74,6 +75,7 @@ export function PiGuesser() {
         setWrongGuess(null);
       } else {
         setWrongGuess(digit);
+        setWrongCount((c) => c + 1);
         setGameOver(true);
         setShake(true);
         setTimeout(() => setShake(false), 500);
@@ -82,11 +84,19 @@ export function PiGuesser() {
     [position, gameOver]
   );
 
+  const handleContinue = useCallback(() => {
+    // Move past the wrong digit and continue
+    setPosition((p) => p + 1);
+    setWrongGuess(null);
+    setGameOver(false);
+  }, []);
+
   const handleReset = useCallback(() => {
     setPosition(2);
     setWrongGuess(null);
     setGameOver(false);
     setShake(false);
+    setWrongCount(0);
     stopSimulation();
   }, []);
 
@@ -132,13 +142,15 @@ export function PiGuesser() {
       if (e.key >= "0" && e.key <= "9") {
         handleGuess(parseInt(e.key));
       } else if (e.key === "Enter" && gameOver) {
+        handleContinue();
+      } else if (e.key === "Escape" && gameOver) {
         handleReset();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleGuess, handleReset, gameOver]);
+  }, [handleGuess, handleReset, handleContinue, gameOver]);
 
   const formattedGroups = formatDigits(revealedDigits);
 
@@ -167,6 +179,13 @@ export function PiGuesser() {
             {position - 1}
           </div>
           <div className="text-sm text-muted-foreground">After Decimal</div>
+        </div>
+        <div className="h-12 w-px bg-border" />
+        <div>
+          <div className="text-2xl font-bold text-destructive sm:text-3xl">
+            {wrongCount}
+          </div>
+          <div className="text-sm text-muted-foreground">Wrong Guesses</div>
         </div>
       </div>
 
@@ -247,11 +266,16 @@ export function PiGuesser() {
         ))}
       </div>
 
-      {/* Reset button */}
+      {/* Continue and Reset buttons */}
       {gameOver && (
-        <Button onClick={handleReset} size="lg" className="mt-2">
-          Try Again
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={handleContinue} size="lg" variant="default">
+            Continue
+          </Button>
+          <Button onClick={handleReset} size="lg" variant="outline">
+            Reset
+          </Button>
+        </div>
       )}
 
       {/* Simulation controls */}
@@ -296,7 +320,7 @@ export function PiGuesser() {
 
       {/* Keyboard hint */}
       <p className="text-sm text-muted-foreground">
-        Tip: Use your keyboard number keys to guess faster!
+        Tip: Use keyboard 0-9 to guess, Enter to continue, Escape to reset
       </p>
     </div>
   );
