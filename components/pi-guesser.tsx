@@ -152,9 +152,7 @@ export function PiGuesser() {
             key={digit}
             variant={gameOver ? "secondary" : "outline"}
             size="lg"
-            className={`h-14 w-14 text-xl font-semibold sm:h-16 sm:w-16 sm:text-2xl ${
-              digit === 0 ? "col-start-3" : ""
-            }`}
+            className="h-14 w-14 text-xl font-semibold sm:h-16 sm:w-16 sm:text-2xl"
             onClick={() => handleGuess(digit)}
             disabled={gameOver}
           >
