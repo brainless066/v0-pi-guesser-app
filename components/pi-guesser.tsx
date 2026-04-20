@@ -9,7 +9,6 @@ const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
 const CHUNK_START_OPTIONS = [
   { label: "3.", value: "3.", prefix: "3." },
   { label: "3.14", value: "3.14", prefix: "3.14" },
-  { label: "3", value: "3", prefix: "" },
 ] as const;
 const STORAGE_KEY = "pi-guesser-chunk-size";
 const STORAGE_KEY_CHUNK_START = "pi-guesser-chunk-start";
@@ -30,7 +29,7 @@ export function PiGuesser() {
   const [gameOver, setGameOver] = useState(false);
   const [shake, setShake] = useState(false);
   const [chunkSize, setChunkSize] = useState(5);
-  const [chunkStart, setChunkStart] = useState<"3." | "3.14" | "3">("3.");
+  const [chunkStart, setChunkStart] = useState<"3." | "3.14" | "none">("3.");
   const [simulating, setSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState(20);
   const [wrongCount, setWrongCount] = useState(0);
@@ -47,8 +46,8 @@ export function PiGuesser() {
       }
     }
     const savedStart = localStorage.getItem(STORAGE_KEY_CHUNK_START);
-    if (savedStart && ["3.", "3.14", "3"].includes(savedStart)) {
-      setChunkStart(savedStart as "3." | "3.14" | "3");
+    if (savedStart && ["3.", "3.14", "none"].includes(savedStart)) {
+      setChunkStart(savedStart as "3." | "3.14" | "none");
     }
     const savedSpeed = localStorage.getItem(STORAGE_KEY_SPEED);
     if (savedSpeed) {
@@ -65,10 +64,11 @@ export function PiGuesser() {
     localStorage.setItem(STORAGE_KEY, size.toString());
   };
 
-  // Save chunk start to localStorage when it changes
-  const handleChunkStartChange = (start: "3." | "3.14" | "3") => {
-    setChunkStart(start);
-    localStorage.setItem(STORAGE_KEY_CHUNK_START, start);
+  // Save chunk start to localStorage when it changes (toggle behavior)
+  const handleChunkStartToggle = (start: "3." | "3.14") => {
+    const newValue = chunkStart === start ? "none" : start;
+    setChunkStart(newValue);
+    localStorage.setItem(STORAGE_KEY_CHUNK_START, newValue);
   };
 
   // Save sim speed to localStorage when it changes
@@ -79,16 +79,13 @@ export function PiGuesser() {
 
   // Get the prefix and offset based on chunk start option
   const getChunkStartConfig = () => {
-    const option = CHUNK_START_OPTIONS.find((o) => o.value === chunkStart);
-    if (!option) return { prefix: "3.", offset: 0 };
-    
     // offset is how many digits are included in the prefix (after "3.")
-    // "3." = 0 digits in prefix, "3.14" = 2 digits in prefix, "3" = includes 3 so -1 conceptually
+    // "3." = 0 digits in prefix, "3.14" = 2 digits in prefix, "none" = no prefix
     switch (chunkStart) {
       case "3.14":
         return { prefix: "3.14", offset: 2 };
-      case "3":
-        return { prefix: "", offset: -1 }; // -1 means include "3" in the chunked digits
+      case "none":
+        return { prefix: "3.", offset: 0 }; // Still show 3. but chunking starts fresh
       default:
         return { prefix: "3.", offset: 0 };
     }
@@ -102,11 +99,8 @@ export function PiGuesser() {
   // Format digits into groups for readability, considering the chunk start offset
   const formatDigits = useCallback((digits: string, startOffset: number) => {
     // startOffset: number of digits already shown in the prefix
-    // If offset is -1 (for "3" mode), we prepend "3" to the digits
     let digitsToFormat = digits;
-    if (startOffset === -1) {
-      digitsToFormat = "3" + digits;
-    } else if (startOffset > 0) {
+    if (startOffset > 0) {
       // Skip the first 'offset' digits as they're in the prefix
       digitsToFormat = digits.slice(startOffset);
     }
@@ -290,7 +284,7 @@ export function PiGuesser() {
                 variant={chunkStart === option.value ? "default" : "outline"}
                 size="sm"
                 className="h-8 px-3 text-sm font-mono"
-                onClick={() => handleChunkStartChange(option.value)}
+                onClick={() => handleChunkStartToggle(option.value)}
               >
                 {option.label}
               </Button>
@@ -307,8 +301,7 @@ export function PiGuesser() {
           ref={scrollRef}
           className="max-h-64 overflow-y-auto font-mono text-lg sm:text-xl"
         >
-          {prefix && <span className="text-foreground">{prefix}</span>}
-          {offset <= 0 && prefix === "" && <span className="text-muted-foreground">π = </span>}
+          <span className="text-foreground">{prefix}</span>
           <span className="text-foreground">
             {formattedGroups.map((group, i) => (
               <span key={i}>
