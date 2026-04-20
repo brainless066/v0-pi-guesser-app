@@ -415,6 +415,16 @@ export function PiGuesser() {
       <p className="text-sm text-muted-foreground">
         Tip: Use keyboard 0-9 to guess, Enter to continue, Escape to reset
       </p>
+
+      {/* Source link */}
+      <a
+        href="https://github.com/eneko/Pi/blob/master/one-million.txt"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+      >
+        Pi digits source
+      </a>
     </div>
   );
 }
