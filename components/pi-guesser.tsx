@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PI_DIGITS } from "@/lib/pi-digits";
 
 const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
@@ -40,7 +41,7 @@ export function PiGuesser() {
     const savedSize = localStorage.getItem(STORAGE_KEY);
     if (savedSize) {
       const parsed = parseInt(savedSize);
-      if (CHUNK_OPTIONS.includes(parsed as typeof CHUNK_OPTIONS[number])) {
+      if (parsed >= 1 && parsed <= 100) {
         setChunkSize(parsed);
       }
     }
@@ -252,6 +253,19 @@ export function PiGuesser() {
               </Button>
             ))}
           </div>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={chunkSize}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (val >= 1 && val <= 100) {
+                handleChunkSizeChange(val);
+              }
+            }}
+            className="h-8 w-16 text-center text-sm"
+          />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Start after:</span>
