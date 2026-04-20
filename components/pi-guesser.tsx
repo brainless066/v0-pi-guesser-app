@@ -4,6 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PI_DIGITS } from "@/lib/pi-digits";
 
+const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
+const STORAGE_KEY = "pi-guesser-chunk-size";
+
 export function PiGuesser() {
   // Position in PI_DIGITS (0 = first digit after decimal, which is '1')
   // We start showing "3.14" so position starts at 2 (after '1' and '4')
@@ -11,19 +14,37 @@ export function PiGuesser() {
   const [wrongGuess, setWrongGuess] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [shake, setShake] = useState(false);
+  const [chunkSize, setChunkSize] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load chunk size from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = parseInt(saved);
+      if (CHUNK_OPTIONS.includes(parsed as typeof CHUNK_OPTIONS[number])) {
+        setChunkSize(parsed);
+      }
+    }
+  }, []);
+
+  // Save chunk size to localStorage when it changes
+  const handleChunkSizeChange = (size: number) => {
+    setChunkSize(size);
+    localStorage.setItem(STORAGE_KEY, size.toString());
+  };
 
   // Get the digits we've revealed so far
   const revealedDigits = PI_DIGITS.slice(0, position);
 
-  // Format digits into groups of 5 for readability
+  // Format digits into groups for readability
   const formatDigits = useCallback((digits: string) => {
     const groups: string[] = [];
-    for (let i = 0; i < digits.length; i += 5) {
-      groups.push(digits.slice(i, i + 5));
+    for (let i = 0; i < digits.length; i += chunkSize) {
+      groups.push(digits.slice(i, i + chunkSize));
     }
     return groups;
-  }, []);
+  }, [chunkSize]);
 
   // Auto-scroll to bottom when new digits are added
   useEffect(() => {
@@ -99,6 +120,24 @@ export function PiGuesser() {
             {position - 1}
           </div>
           <div className="text-sm text-muted-foreground">After Decimal</div>
+        </div>
+      </div>
+
+      {/* Chunk size selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Group by:</span>
+        <div className="flex gap-1">
+          {CHUNK_OPTIONS.map((size) => (
+            <Button
+              key={size}
+              variant={chunkSize === size ? "default" : "outline"}
+              size="sm"
+              className="h-8 w-10 text-sm"
+              onClick={() => handleChunkSizeChange(size)}
+            >
+              {size}
+            </Button>
+          ))}
         </div>
       </div>
 
