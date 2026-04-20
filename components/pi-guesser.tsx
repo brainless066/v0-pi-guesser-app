@@ -79,13 +79,16 @@ export function PiGuesser() {
 
   // Get the prefix and offset based on chunk start option
   const getChunkStartConfig = () => {
-    // offset is how many digits are included in the prefix (after "3.")
-    // "3." = 0 digits in prefix, "3.14" = 2 digits in prefix, "none" = no prefix
+    // offset determines where chunking alignment starts
+    // "none" = chunking starts from digit 0 (e.g., 3. 141 592 653...)
+    // "3." = chunking starts fresh after showing "14" separately (legacy, but same as none now)
+    // "3.14" = "14" is part of prefix, chunking starts from digit 2 (e.g., 3.14 159 265...)
     switch (chunkStart) {
       case "3.14":
         return { prefix: "3.14", offset: 2 };
+      case "3.":
+        return { prefix: "3.", offset: 0 };
       case "none":
-        return { prefix: "3.", offset: 0 }; // Still show 3. but chunking starts fresh
       default:
         return { prefix: "3.", offset: 0 };
     }
