@@ -278,7 +278,7 @@ export function PiGuesser() {
                 handleChunkSizeChange(val);
               }
             }}
-            className="h-8 w-16 text-center text-sm"
+            className="h-8 w-16 rounded-md border-dashed border-2 bg-muted/50 text-center text-sm font-mono focus:border-solid focus:border-primary"
           />
         </div>
         <div className="flex items-center gap-2">
