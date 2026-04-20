@@ -4,6 +4,16 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PI_DIGITS } from "@/lib/pi-digits";
 
+const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
+const STORAGE_KEY = "pi-guesser-chunk-size";
+
+const SPEED_OPTIONS = [
+  { label: "Slow", ms: 100 },
+  { label: "Fast", ms: 20 },
+  { label: "Turbo", ms: 5 },
+  { label: "Max", ms: 1 },
+] as const;
+
 export function PiGuesser() {
   // Position in PI_DIGITS (0 = first digit after decimal, which is '1')
   // We start showing "3.14" so position starts at 2 (after '1' and '4')
@@ -11,19 +21,41 @@ export function PiGuesser() {
   const [wrongGuess, setWrongGuess] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [shake, setShake] = useState(false);
+  const [chunkSize, setChunkSize] = useState(5);
+  const [simulating, setSimulating] = useState(false);
+  const [simSpeed, setSimSpeed] = useState(20);
+  const [wrongCount, setWrongCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const simulationRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load chunk size from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = parseInt(saved);
+      if (CHUNK_OPTIONS.includes(parsed as typeof CHUNK_OPTIONS[number])) {
+        setChunkSize(parsed);
+      }
+    }
+  }, []);
+
+  // Save chunk size to localStorage when it changes
+  const handleChunkSizeChange = (size: number) => {
+    setChunkSize(size);
+    localStorage.setItem(STORAGE_KEY, size.toString());
+  };
 
   // Get the digits we've revealed so far
   const revealedDigits = PI_DIGITS.slice(0, position);
 
-  // Format digits into groups of 5 for readability
+  // Format digits into groups for readability
   const formatDigits = useCallback((digits: string) => {
     const groups: string[] = [];
-    for (let i = 0; i < digits.length; i += 5) {
-      groups.push(digits.slice(i, i + 5));
+    for (let i = 0; i < digits.length; i += chunkSize) {
+      groups.push(digits.slice(i, i + chunkSize));
     }
     return groups;
-  }, []);
+  }, [chunkSize]);
 
   // Auto-scroll to bottom when new digits are added
   useEffect(() => {
@@ -43,6 +75,7 @@ export function PiGuesser() {
         setWrongGuess(null);
       } else {
         setWrongGuess(digit);
+        setWrongCount((c) => c + 1);
         setGameOver(true);
         setShake(true);
         setTimeout(() => setShake(false), 500);
@@ -51,12 +84,57 @@ export function PiGuesser() {
     [position, gameOver]
   );
 
+  const handleContinue = useCallback(() => {
+    // Move past the wrong digit and continue
+    setPosition((p) => p + 1);
+    setWrongGuess(null);
+    setGameOver(false);
+  }, []);
+
   const handleReset = useCallback(() => {
     setPosition(2);
     setWrongGuess(null);
     setGameOver(false);
     setShake(false);
+    setWrongCount(0);
+    stopSimulation();
   }, []);
+
+  const stopSimulation = useCallback(() => {
+    if (simulationRef.current) {
+      clearInterval(simulationRef.current);
+      simulationRef.current = null;
+    }
+    setSimulating(false);
+  }, []);
+
+  const startSimulation = useCallback(() => {
+    if (gameOver) {
+      handleReset();
+    }
+    setSimulating(true);
+  }, [gameOver, handleReset]);
+
+  // Simulation effect
+  useEffect(() => {
+    if (simulating && !gameOver) {
+      simulationRef.current = setInterval(() => {
+        setPosition((p) => {
+          if (p >= PI_DIGITS.length - 1) {
+            stopSimulation();
+            return p;
+          }
+          return p + 1;
+        });
+      }, simSpeed);
+    }
+
+    return () => {
+      if (simulationRef.current) {
+        clearInterval(simulationRef.current);
+      }
+    };
+  }, [simulating, gameOver, simSpeed, stopSimulation]);
 
   // Keyboard support
   useEffect(() => {
@@ -64,13 +142,15 @@ export function PiGuesser() {
       if (e.key >= "0" && e.key <= "9") {
         handleGuess(parseInt(e.key));
       } else if (e.key === "Enter" && gameOver) {
+        handleContinue();
+      } else if (e.key === "Escape" && gameOver) {
         handleReset();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleGuess, handleReset, gameOver]);
+  }, [handleGuess, handleReset, handleContinue, gameOver]);
 
   const formattedGroups = formatDigits(revealedDigits);
 
@@ -99,6 +179,31 @@ export function PiGuesser() {
             {position - 1}
           </div>
           <div className="text-sm text-muted-foreground">After Decimal</div>
+        </div>
+        <div className="h-12 w-px bg-border" />
+        <div>
+          <div className="text-2xl font-bold text-destructive sm:text-3xl">
+            {wrongCount}
+          </div>
+          <div className="text-sm text-muted-foreground">Wrong Guesses</div>
+        </div>
+      </div>
+
+      {/* Chunk size selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Group by:</span>
+        <div className="flex gap-1">
+          {CHUNK_OPTIONS.map((size) => (
+            <Button
+              key={size}
+              variant={chunkSize === size ? "default" : "outline"}
+              size="sm"
+              className="h-8 w-10 text-sm"
+              onClick={() => handleChunkSizeChange(size)}
+            >
+              {size}
+            </Button>
+          ))}
         </div>
       </div>
 
@@ -161,16 +266,61 @@ export function PiGuesser() {
         ))}
       </div>
 
-      {/* Reset button */}
+      {/* Continue and Reset buttons */}
       {gameOver && (
-        <Button onClick={handleReset} size="lg" className="mt-2">
-          Try Again
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={handleContinue} size="lg" variant="default">
+            Continue
+          </Button>
+          <Button onClick={handleReset} size="lg" variant="outline">
+            Reset
+          </Button>
+        </div>
       )}
+
+      {/* Simulation controls */}
+      <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Speed:</span>
+          <div className="flex gap-1">
+            {SPEED_OPTIONS.map((option) => (
+              <Button
+                key={option.label}
+                variant={simSpeed === option.ms ? "default" : "outline"}
+                size="sm"
+                className="h-8 px-3 text-sm"
+                onClick={() => setSimSpeed(option.ms)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {!simulating ? (
+            <Button
+              onClick={startSimulation}
+              variant="default"
+              size="lg"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Start Simulation
+            </Button>
+          ) : (
+            <Button
+              onClick={stopSimulation}
+              variant="destructive"
+              size="lg"
+            >
+              Stop Simulation
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Keyboard hint */}
       <p className="text-sm text-muted-foreground">
-        Tip: Use your keyboard number keys to guess faster!
+        Tip: Use keyboard 0-9 to guess, Enter to continue, Escape to reset
       </p>
     </div>
   );
