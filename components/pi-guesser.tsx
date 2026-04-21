@@ -30,7 +30,7 @@ export function PiGuesser() {
   const [gameOver, setGameOver] = useState(false);
   const [shake, setShake] = useState(false);
   const [chunkSize, setChunkSize] = useState(5);
-  const [chunkStart, setChunkStart] = useState<"3." | "3.14" | "none">("3.");
+  const [chunkStart, setChunkStart] = useState<"3." | "3.14" | "none">("none");
   const [simulating, setSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState(20);
   const [wrongCount, setWrongCount] = useState(0);
