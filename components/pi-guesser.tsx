@@ -35,7 +35,7 @@ export function PiGuesser() {
   const [simulating, setSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState(20);
   const [wrongCount, setWrongCount] = useState(0);
-  const [soundType, setSoundType] = useState<SoundType>("tick");
+  const [soundType, setSoundType] = useState<SoundType>("soft");
   const scrollRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -433,7 +433,7 @@ export function PiGuesser() {
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">Sound:</span>
         <div className="flex gap-1">
-          {(["tick", "pop", "beep", "click", "mute"] as const).map((type) => (
+          {(["soft", "typewriter", "mechanical", "tap", "mute"] as const).map((type) => (
             <Button
               key={type}
               variant={soundType === type ? "default" : "outline"}
