@@ -15,6 +15,7 @@ const CHUNK_START_OPTIONS = [
 const STORAGE_KEY = "pi-guesser-chunk-size";
 const STORAGE_KEY_CHUNK_START = "pi-guesser-chunk-start";
 const STORAGE_KEY_SPEED = "pi-guesser-sim-speed";
+const STORAGE_KEY_SIM_SOUND = "pi-guesser-sim-sound";
 
 const SPEED_OPTIONS = [
   { label: "Slow", ms: 100 },
