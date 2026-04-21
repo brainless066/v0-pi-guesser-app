@@ -1,6 +1,6 @@
 "use client";
 
-export type SoundType = "soft" | "typewriter" | "mechanical" | "tap" | "mute";
+export type SoundType = "soft" | "typewriter" | "mechanical" | "tap" | "tick" | "pop" | "beep" | "click" | "mute";
 
 const STORAGE_KEY_SOUND = "pi-guesser-sound";
 const STORAGE_KEY_VOLUME = "pi-guesser-volume";
@@ -127,13 +127,76 @@ export function playSound(type: SoundType, volume: number = 1) {
       noise.stop(now + 0.015);
       break;
     }
+
+    case "tick": {
+      // Short, high-pitched tick
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(1800, now);
+      oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.03);
+      gainNode.gain.setValueAtTime(0.15 * vol, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      oscillator.start(now);
+      oscillator.stop(now + 0.05);
+      break;
+    }
+
+    case "pop": {
+      // Soft pop sound
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(400, now);
+      oscillator.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+      gainNode.gain.setValueAtTime(0.2 * vol, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      oscillator.start(now);
+      oscillator.stop(now + 0.1);
+      break;
+    }
+
+    case "beep": {
+      // Classic beep
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.type = "square";
+      oscillator.frequency.setValueAtTime(880, now);
+      gainNode.gain.setValueAtTime(0.08 * vol, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      oscillator.start(now);
+      oscillator.stop(now + 0.06);
+      break;
+    }
+
+    case "click": {
+      // Mechanical click
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(2500, now);
+      oscillator.frequency.exponentialRampToValueAtTime(500, now + 0.02);
+      gainNode.gain.setValueAtTime(0.12 * vol, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      oscillator.start(now);
+      oscillator.stop(now + 0.03);
+      break;
+    }
   }
 }
 
 export function getSavedSound(): SoundType {
   if (typeof window === "undefined") return "soft";
   const saved = localStorage.getItem(STORAGE_KEY_SOUND);
-  if (saved && ["soft", "typewriter", "mechanical", "tap", "mute"].includes(saved)) {
+  if (saved && ["soft", "typewriter", "mechanical", "tap", "tick", "pop", "beep", "click", "mute"].includes(saved)) {
     return saved as SoundType;
   }
   return "soft";

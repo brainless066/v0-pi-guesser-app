@@ -444,7 +444,7 @@ export function PiGuesser() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Sound:</span>
           <div className="flex gap-1">
-            {(["soft", "typewriter", "mechanical", "tap", "mute"] as const).map((type) => (
+            {(["soft", "typewriter", "mechanical", "tap", "tick", "pop", "beep", "click", "mute"] as const).map((type) => (
               <Button
                 key={type}
                 variant={soundType === type ? "default" : "outline"}
