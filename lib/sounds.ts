@@ -3,6 +3,7 @@
 export type SoundType = "soft" | "typewriter" | "mechanical" | "tap" | "mute";
 
 const STORAGE_KEY_SOUND = "pi-guesser-sound";
+const STORAGE_KEY_VOLUME = "pi-guesser-volume";
 
 let audioContext: AudioContext | null = null;
 
@@ -26,11 +27,14 @@ function createNoiseBuffer(ctx: AudioContext, duration: number): AudioBuffer {
   return buffer;
 }
 
-export function playSound(type: SoundType) {
-  if (type === "mute") return;
+export function playSound(type: SoundType, volume: number = 1) {
+  if (type === "mute" || volume === 0) return;
 
   const ctx = getAudioContext();
   const now = ctx.currentTime;
+  
+  // Volume multiplier (0 to 1)
+  const vol = Math.max(0, Math.min(1, volume));
 
   switch (type) {
     case "soft": {
@@ -44,7 +48,7 @@ export function playSound(type: SoundType) {
       filter.Q.value = 1;
       
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.setValueAtTime(0.06 * vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
       
       noise.connect(filter);
@@ -65,7 +69,7 @@ export function playSound(type: SoundType) {
       filter.frequency.value = 2000;
       
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.setValueAtTime(0.1 * vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
       
       noise.connect(filter);
@@ -90,7 +94,7 @@ export function playSound(type: SoundType) {
       highpass.frequency.value = 200;
       
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.setValueAtTime(0.12 * vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
       
       noise.connect(lowpass);
@@ -113,7 +117,7 @@ export function playSound(type: SoundType) {
       filter.Q.value = 0.5;
       
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.setValueAtTime(0.04 * vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.01);
       
       noise.connect(filter);
@@ -137,4 +141,20 @@ export function getSavedSound(): SoundType {
 
 export function saveSound(type: SoundType) {
   localStorage.setItem(STORAGE_KEY_SOUND, type);
+}
+
+export function getSavedVolume(): number {
+  if (typeof window === "undefined") return 0.5;
+  const saved = localStorage.getItem(STORAGE_KEY_VOLUME);
+  if (saved) {
+    const parsed = parseFloat(saved);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+      return parsed;
+    }
+  }
+  return 0.5;
+}
+
+export function saveVolume(volume: number) {
+  localStorage.setItem(STORAGE_KEY_VOLUME, volume.toString());
 }

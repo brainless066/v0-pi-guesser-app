@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PI_DIGITS } from "@/lib/pi-digits";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { playSound, getSavedSound, saveSound, type SoundType } from "@/lib/sounds";
+import { playSound, getSavedSound, saveSound, getSavedVolume, saveVolume, type SoundType } from "@/lib/sounds";
 
 const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
 const CHUNK_START_OPTIONS = [
@@ -36,6 +36,7 @@ export function PiGuesser() {
   const [simSpeed, setSimSpeed] = useState(20);
   const [wrongCount, setWrongCount] = useState(0);
   const [soundType, setSoundType] = useState<SoundType>("soft");
+  const [volume, setVolume] = useState(0.5);
   const scrollRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -60,6 +61,7 @@ export function PiGuesser() {
       }
     }
     setSoundType(getSavedSound());
+    setVolume(getSavedVolume());
   }, []);
 
   // Save chunk size to localStorage when it changes
@@ -86,7 +88,15 @@ export function PiGuesser() {
     setSoundType(type);
     saveSound(type);
     // Play preview sound
-    playSound(type);
+    playSound(type, volume);
+  };
+
+  // Save volume to localStorage when it changes
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    saveVolume(newVolume);
+    // Play preview sound at new volume
+    playSound(soundType, newVolume);
   };
 
   // Get the prefix and offset based on chunk start option
@@ -142,7 +152,7 @@ export function PiGuesser() {
     (digit: number) => {
       if (gameOver) return;
 
-      playSound(soundType);
+      playSound(soundType, volume);
       const correctDigit = parseInt(PI_DIGITS[position]);
 
       if (digit === correctDigit) {
@@ -156,7 +166,7 @@ export function PiGuesser() {
         setTimeout(() => setShake(false), 500);
       }
     },
-    [position, gameOver, soundType]
+    [position, gameOver, soundType, volume]
   );
 
   const handleContinue = useCallback(() => {
@@ -430,20 +440,35 @@ export function PiGuesser() {
       </div>
 
       {/* Sound selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Sound:</span>
-        <div className="flex gap-1">
-          {(["soft", "typewriter", "mechanical", "tap", "mute"] as const).map((type) => (
-            <Button
-              key={type}
-              variant={soundType === type ? "default" : "outline"}
-              size="sm"
-              className="h-8 px-3 text-sm capitalize"
-              onClick={() => handleSoundChange(type)}
-            >
-              {type}
-            </Button>
-          ))}
+      <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Sound:</span>
+          <div className="flex gap-1">
+            {(["soft", "typewriter", "mechanical", "tap", "mute"] as const).map((type) => (
+              <Button
+                key={type}
+                variant={soundType === type ? "default" : "outline"}
+                size="sm"
+                className="h-8 px-3 text-sm capitalize"
+                onClick={() => handleSoundChange(type)}
+              >
+                {type}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Volume:</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={volume}
+            onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+            className="h-2 w-24 cursor-pointer appearance-none rounded-lg bg-muted accent-primary"
+          />
+          <span className="w-8 text-sm text-muted-foreground">{Math.round(volume * 100)}%</span>
         </div>
       </div>
 
