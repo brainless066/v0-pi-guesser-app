@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PI_DIGITS } from "@/lib/pi-digits";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { playSound, getSavedSound, saveSound, type SoundType } from "@/lib/sounds";
 
 const CHUNK_OPTIONS = [3, 4, 5, 10] as const;
 const CHUNK_START_OPTIONS = [
@@ -34,6 +35,7 @@ export function PiGuesser() {
   const [simulating, setSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState(20);
   const [wrongCount, setWrongCount] = useState(0);
+  const [soundType, setSoundType] = useState<SoundType>("tick");
   const scrollRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -57,6 +59,7 @@ export function PiGuesser() {
         setSimSpeed(parsed);
       }
     }
+    setSoundType(getSavedSound());
   }, []);
 
   // Save chunk size to localStorage when it changes
@@ -76,6 +79,14 @@ export function PiGuesser() {
   const handleSimSpeedChange = (speed: number) => {
     setSimSpeed(speed);
     localStorage.setItem(STORAGE_KEY_SPEED, speed.toString());
+  };
+
+  // Save sound type to localStorage when it changes
+  const handleSoundChange = (type: SoundType) => {
+    setSoundType(type);
+    saveSound(type);
+    // Play preview sound
+    playSound(type);
   };
 
   // Get the prefix and offset based on chunk start option
@@ -131,6 +142,7 @@ export function PiGuesser() {
     (digit: number) => {
       if (gameOver) return;
 
+      playSound(soundType);
       const correctDigit = parseInt(PI_DIGITS[position]);
 
       if (digit === correctDigit) {
@@ -144,7 +156,7 @@ export function PiGuesser() {
         setTimeout(() => setShake(false), 500);
       }
     },
-    [position, gameOver]
+    [position, gameOver, soundType]
   );
 
   const handleContinue = useCallback(() => {
@@ -414,6 +426,24 @@ export function PiGuesser() {
               Stop Simulation
             </Button>
           )}
+        </div>
+      </div>
+
+      {/* Sound selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Sound:</span>
+        <div className="flex gap-1">
+          {(["tick", "pop", "beep", "click", "mute"] as const).map((type) => (
+            <Button
+              key={type}
+              variant={soundType === type ? "default" : "outline"}
+              size="sm"
+              className="h-8 px-3 text-sm capitalize"
+              onClick={() => handleSoundChange(type)}
+            >
+              {type}
+            </Button>
+          ))}
         </div>
       </div>
 
